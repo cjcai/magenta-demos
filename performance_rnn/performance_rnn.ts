@@ -414,8 +414,7 @@ document.getElementById('playcontrol').onclick = () => {
   updatePitchHistogram(preset2);
 };*/
 
-document.getElementById('save-1').onclick = () => {
-  console.log("SAVE PRESET 1");
+document.getElementById('save-preset').onclick = () => {
   let pitchHistogram = pitchHistogramElements.map((e) => {
     return parseInt(e.value, 10) || 0;
   });
@@ -446,11 +445,24 @@ function addPresetButton(name: string) {
   presetContainer.appendChild(preset);
   presetContainer.appendChild(presetTextfield);
   document.getElementById("presets").appendChild(presetContainer);
-  preset.onclick = () => {
+
+  let presetTimeout: ReturnType<typeof setTimeout> = null;
+  let ticks = 0;
+  function update() {
     updatePitchHistogram(presetProperties['pitchHistogram']);
     console.log('preset-1', presetProperties);
-    updateNoteDensity(presetProperties['noteDensityIdx']);
+    updateNoteDensity(presetProperties['noteDensityIdx'] + 1);
     updateGain(presetProperties['gain']);
+    if (ticks == 4) {
+      clearTimeout(presetTimeout);
+    } else {
+      setTimeout(update, 1000);
+    }
+
+  }
+  preset.onclick = () => {
+    presetTimeout = setTimeout(update, 1000);
+
   };
 
   presetTextfield.addEventListener("keyup", (e) => {
