@@ -37751,6 +37751,8 @@ var MIDI_NO_OUTPUT_DEVICES_FOUND_MESSAGE = 'No midi output devices found.';
 var MIDI_NO_INPUT_DEVICES_FOUND_MESSAGE = 'No midi input devices found.';
 var MID_IN_CHORD_RESET_THRESHOLD_MS = 1000;
 var currentLoopId = 0;
+var timeout = null;
+var playing = true;
 var EVENT_RANGES = [
     ['note_on', MIN_MIDI_PITCH, MAX_MIDI_PITCH],
     ['note_off', MIN_MIDI_PITCH, MAX_MIDI_PITCH],
@@ -37833,7 +37835,9 @@ function resetRnn() {
     currentPianoTimeSec = piano.now();
     pianoStartTimestampMs = performance.now() - currentPianoTimeSec * 1000;
     currentLoopId++;
-    generateStep(currentLoopId);
+    if (playing) {
+        generateStep(currentLoopId);
+    }
 }
 window.addEventListener('resize', resize);
 function resize() {
@@ -37846,7 +37850,7 @@ var conditioningOffElem = document.getElementById('conditioning-off');
 conditioningOffElem.onchange = disableConditioning;
 var conditioningOnElem = document.getElementById('conditioning-on');
 conditioningOnElem.onchange = enableConditioning;
-setTimeout(function () { return disableConditioning(); });
+setTimeout(function () { return enableConditioning(); });
 var conditioningControlsElem = document.getElementById('conditioning-controls');
 var gainSliderElement = document.getElementById('gain');
 var gainDisplayElement = document.getElementById('gain-display');
@@ -37994,6 +37998,19 @@ document.getElementById('pentatonic').onclick = function () {
 document.getElementById('reset-rnn').onclick = function () {
     resetRnn();
 };
+document.getElementById('playcontrol').onclick = function () {
+    var elem = document.getElementById('playcontrol');
+    if (elem.getAttribute("value") == "pause") {
+        clearTimeout(timeout);
+        playing = false;
+        elem.setAttribute("value", "play");
+    }
+    else {
+        playing = true;
+        elem.setAttribute("value", "pause");
+        generateStep(currentLoopId);
+    }
+};
 document.getElementById('save-1').onclick = function () {
     console.log("SAVE PRESET 1");
     var pitchHistogram = pitchHistogramElements.map(function (e) {
@@ -38099,7 +38116,9 @@ function generateStep(loopId) {
                 currentPianoTimeSec = piano.now();
             }
             delta = Math.max(0, currentPianoTimeSec - piano.now() - GENERATION_BUFFER_SECONDS);
-            setTimeout(function () { return generateStep(loopId); }, delta * 100);
+            if (playing) {
+                setTimeout(function () { return generateStep(loopId); }, delta * 1000);
+            }
             return [2];
         });
     });

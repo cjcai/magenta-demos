@@ -76,6 +76,8 @@ const MID_IN_CHORD_RESET_THRESHOLD_MS = 1000;
 
 // The unique id of the currently scheduled setTimeout loop.
 let currentLoopId = 0;
+let timeout: ReturnType<typeof setTimeout> = null;
+let playing = true;
 
 const EVENT_RANGES = [
   ['note_on', MIN_MIDI_PITCH, MAX_MIDI_PITCH],
@@ -177,7 +179,11 @@ function resetRnn() {
   currentPianoTimeSec = piano.now();
   pianoStartTimestampMs = performance.now() - currentPianoTimeSec * 1000;
   currentLoopId++;
-  generateStep(currentLoopId);
+
+  if (playing) {
+    generateStep(currentLoopId);
+  }
+
 }
 
 window.addEventListener('resize', resize);
@@ -197,7 +203,7 @@ conditioningOffElem.onchange = disableConditioning;
 const conditioningOnElem =
   document.getElementById('conditioning-on') as HTMLInputElement;
 conditioningOnElem.onchange = enableConditioning;
-setTimeout(() => disableConditioning());
+setTimeout(() => enableConditioning());
 
 const conditioningControlsElem =
   document.getElementById('conditioning-controls') as HTMLDivElement;
@@ -383,6 +389,20 @@ document.getElementById('reset-rnn').onclick = () => {
   resetRnn();
 };
 
+document.getElementById('playcontrol').onclick = () => {
+  const elem = document.getElementById('playcontrol');
+  if (elem.getAttribute("value") == "pause") {
+    clearTimeout(timeout);
+    playing = false;
+    elem.setAttribute("value", "play");
+  } else {
+    playing = true;
+    elem.setAttribute("value", "pause");
+    generateStep(currentLoopId);
+  }
+};
+
+
 /*document.getElementById('preset-1').onclick = () => {
   updatePitchHistogram(preset1);
   console.log('preset-1', presets['test']);
@@ -535,7 +555,11 @@ async function generateStep(loopId: number) {
   }
   const delta = Math.max(
     0, currentPianoTimeSec - piano.now() - GENERATION_BUFFER_SECONDS);
-  setTimeout(() => generateStep(loopId), delta * 1000);
+
+  if (playing) {
+    setTimeout(() => generateStep(loopId), delta * 1000);
+  }
+
 }
 
 let midi;
