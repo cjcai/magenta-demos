@@ -37735,7 +37735,8 @@ var PITCH_HISTOGRAM_SIZE = NOTES_PER_OCTAVE;
 var RESET_RNN_FREQUENCY_MS = 30000;
 var pitchHistogramEncoding;
 var noteDensityEncoding;
-var conditioned = false;
+var noteDensityIdx = 0;
+var conditioned = true;
 var currentPianoTimeSec = 0;
 var pianoStartTimestampMs = 0;
 var currentVelocity = 100;
@@ -37850,16 +37851,15 @@ var conditioningControlsElem = document.getElementById('conditioning-controls');
 var gainSliderElement = document.getElementById('gain');
 var gainDisplayElement = document.getElementById('gain-display');
 var globalGain = +gainSliderElement.value;
-gainDisplayElement.innerText = globalGain.toString();
 gainSliderElement.addEventListener('input', function () {
-    globalGain = +gainSliderElement.value;
-    gainDisplayElement.innerText = globalGain.toString();
+    updateGain(+gainSliderElement.value);
 });
 var notes = ['c', 'cs', 'd', 'ds', 'e', 'f', 'fs', 'g', 'gs', 'a', 'as', 'b'];
 var pitchHistogramElements = notes.map(function (note) { return document.getElementById('pitch-' + note); });
 var histogramDisplayElements = notes.map(function (note) { return document.getElementById('hist-' + note); });
 var preset1 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 var preset2 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+var presets = {};
 try {
     parseHash();
 }
@@ -37907,23 +37907,34 @@ function disableConditioning() {
     conditioningControlsElem.classList.remove('midicondition');
     updateConditioningParams();
 }
+function updateGain(gain) {
+    globalGain = gain;
+    gainDisplayElement.innerText = globalGain.toString();
+    gainSliderElement.value = globalGain.toString();
+}
+function updateNoteDensity(noteDensityIdx) {
+    if (noteDensityEncoding != null) {
+        noteDensityEncoding.dispose();
+        noteDensityEncoding = null;
+    }
+    var noteDensity = DENSITY_BIN_RANGES[noteDensityIdx];
+    densityDisplay.innerHTML = noteDensity.toString();
+    densityControl.value = noteDensityIdx.toString();
+    noteDensityEncoding =
+        tf.oneHot(tf.tensor1d([noteDensityIdx + 1], 'int32'), DENSITY_BIN_RANGES.length + 1).as1D();
+}
 function updateConditioningParams() {
     var pitchHistogram = pitchHistogramElements.map(function (e) {
         return parseInt(e.value, 10) || 0;
     });
     updateDisplayHistogram(pitchHistogram);
-    if (noteDensityEncoding != null) {
-        noteDensityEncoding.dispose();
-        noteDensityEncoding = null;
-    }
+    globalGain = +gainSliderElement.value;
+    updateGain(+gainSliderElement.value);
+    noteDensityIdx = parseInt(densityControl.value, 10) || 0;
+    updateNoteDensity(noteDensityIdx);
     window.location.assign('#' + densityControl.value + '|' + pitchHistogram.join(',') + '|' +
         preset1.join(',') + '|' + preset2.join(',') + '|' +
         (conditioned ? 'true' : 'false'));
-    var noteDensityIdx = parseInt(densityControl.value, 10) || 0;
-    var noteDensity = DENSITY_BIN_RANGES[noteDensityIdx];
-    densityDisplay.innerHTML = noteDensity.toString();
-    noteDensityEncoding =
-        tf.oneHot(tf.tensor1d([noteDensityIdx + 1], 'int32'), DENSITY_BIN_RANGES.length + 1).as1D();
     if (pitchHistogramEncoding != null) {
         pitchHistogramEncoding.dispose();
         pitchHistogramEncoding = null;
@@ -37983,24 +37994,47 @@ document.getElementById('pentatonic').onclick = function () {
 document.getElementById('reset-rnn').onclick = function () {
     resetRnn();
 };
-document.getElementById('preset-1').onclick = function () {
-    updatePitchHistogram(preset1);
-};
-document.getElementById('preset-2').onclick = function () {
-    updatePitchHistogram(preset2);
-};
 document.getElementById('save-1').onclick = function () {
-    preset1 = pitchHistogramElements.map(function (e) {
+    console.log("SAVE PRESET 1");
+    var pitchHistogram = pitchHistogramElements.map(function (e) {
         return parseInt(e.value, 10) || 0;
     });
     updateConditioningParams();
+    var numPresets = Object.keys(presets).length;
+    var presetName = 'preset ' + (numPresets + 1);
+    presets[presetName] = { 'pitchHistogram': pitchHistogram, 'noteDensityIdx': noteDensityIdx, 'gain': globalGain };
+    addPresetButton(presetName);
 };
-document.getElementById('save-2').onclick = function () {
-    preset2 = pitchHistogramElements.map(function (e) {
-        return parseInt(e.value, 10) || 0;
+function addPresetButton(name) {
+    var presetContainer = document.createElement("div");
+    presetContainer.setAttribute("class", "presetcontainer");
+    var preset = document.createElement("input");
+    preset.setAttribute("type", "button");
+    preset.setAttribute("value", name);
+    preset.setAttribute("id", name);
+    preset.setAttribute("class", "ui-condition");
+    var presetTextfield = document.createElement("input");
+    presetTextfield.setAttribute("type", "text");
+    presetTextfield.setAttribute("size", "20");
+    var presetProperties = presets[name];
+    presetContainer.appendChild(preset);
+    presetContainer.appendChild(presetTextfield);
+    document.getElementById("presets").appendChild(presetContainer);
+    preset.onclick = function () {
+        updatePitchHistogram(presetProperties['pitchHistogram']);
+        console.log('preset-1', presetProperties);
+        updateNoteDensity(presetProperties['noteDensityIdx']);
+        updateGain(presetProperties['gain']);
+    };
+    presetTextfield.addEventListener("keyup", function (e) {
+        if (e.keyCode == 13) {
+            var newName = presetTextfield.value;
+            preset.setAttribute("value", newName);
+            preset.setAttribute("id", newName);
+            presetTextfield.value = "";
+        }
     });
-    updateConditioningParams();
-};
+}
 function getConditioning() {
     return tf.tidy(function () {
         if (!conditioned) {
@@ -38065,7 +38099,7 @@ function generateStep(loopId) {
                 currentPianoTimeSec = piano.now();
             }
             delta = Math.max(0, currentPianoTimeSec - piano.now() - GENERATION_BUFFER_SECONDS);
-            setTimeout(function () { return generateStep(loopId); }, delta * 1000);
+            setTimeout(function () { return generateStep(loopId); }, delta * 100);
             return [2];
         });
     });

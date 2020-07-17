@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 import * as tf from '@tensorflow/tfjs-core';
-import {KeyboardElement} from './keyboard_element';
+import { KeyboardElement } from './keyboard_element';
 
 // tslint:disable-next-line:no-require-imports
 const Piano = require('tone-piano').Piano;
@@ -52,7 +52,8 @@ const RESET_RNN_FREQUENCY_MS = 30000;
 
 let pitchHistogramEncoding: tf.Tensor1D;
 let noteDensityEncoding: tf.Tensor1D;
-let conditioned = false;
+let noteDensityIdx = 0;
+let conditioned = true;
 
 let currentPianoTimeSec = 0;
 // When the piano roll starts in browser-time via performance.now().
@@ -100,19 +101,19 @@ let lastSample = tf.scalar(PRIMER_IDX, 'int32');
 const container = document.querySelector('#keyboard');
 const keyboardInterface = new KeyboardElement(container);
 
-const piano = new Piano({velocities: 4}).toMaster();
+const piano = new Piano({ velocities: 4 }).toMaster();
 
 const SALAMANDER_URL = 'https://storage.googleapis.com/' +
-    'download.magenta.tensorflow.org/demos/SalamanderPiano/';
+  'download.magenta.tensorflow.org/demos/SalamanderPiano/';
 const CHECKPOINT_URL = 'https://storage.googleapis.com/' +
-    'download.magenta.tensorflow.org/models/performance_rnn/tfjs';
+  'download.magenta.tensorflow.org/models/performance_rnn/tfjs';
 
 const isDeviceSupported = tf.ENV.get('WEBGL_VERSION') >= 1;
 
 if (!isDeviceSupported) {
   document.querySelector('#status').innerHTML =
-      'We do not yet support your device. Please try on a desktop ' +
-      'computer with Chrome/Firefox, or an Android phone with WebGL support.';
+    'We do not yet support your device. Please try on a desktop ' +
+    'computer with Chrome/Firefox, or an Android phone with WebGL support.';
 } else {
   start();
 }
@@ -121,41 +122,41 @@ let modelReady = false;
 
 function start() {
   piano.load(SALAMANDER_URL)
-      .then(() => {
-        return fetch(`${CHECKPOINT_URL}/weights_manifest.json`)
-                     .then((response) => response.json())
-                     .then(
-                         (manifest: tf.WeightsManifestConfig) =>
-                             tf.loadWeights(manifest, CHECKPOINT_URL));
-      })
-      .then((vars: {[varName: string]: tf.Tensor}) => {
-        document.querySelector('#status').classList.add('hidden');
-        document.querySelector('#controls').classList.remove('hidden');
-        document.querySelector('#keyboard').classList.remove('hidden');
+    .then(() => {
+      return fetch(`${CHECKPOINT_URL}/weights_manifest.json`)
+        .then((response) => response.json())
+        .then(
+        (manifest: tf.WeightsManifestConfig) =>
+          tf.loadWeights(manifest, CHECKPOINT_URL));
+    })
+    .then((vars: { [varName: string]: tf.Tensor }) => {
+      document.querySelector('#status').classList.add('hidden');
+      document.querySelector('#controls').classList.remove('hidden');
+      document.querySelector('#keyboard').classList.remove('hidden');
 
-        lstmKernel1 =
-            vars['rnn/multi_rnn_cell/cell_0/basic_lstm_cell/kernel'] as
-            tf.Tensor2D;
-        lstmBias1 = vars['rnn/multi_rnn_cell/cell_0/basic_lstm_cell/bias'] as
-            tf.Tensor1D;
+      lstmKernel1 =
+        vars['rnn/multi_rnn_cell/cell_0/basic_lstm_cell/kernel'] as
+        tf.Tensor2D;
+      lstmBias1 = vars['rnn/multi_rnn_cell/cell_0/basic_lstm_cell/bias'] as
+        tf.Tensor1D;
 
-        lstmKernel2 =
-            vars['rnn/multi_rnn_cell/cell_1/basic_lstm_cell/kernel'] as
-            tf.Tensor2D;
-        lstmBias2 = vars['rnn/multi_rnn_cell/cell_1/basic_lstm_cell/bias'] as
-            tf.Tensor1D;
+      lstmKernel2 =
+        vars['rnn/multi_rnn_cell/cell_1/basic_lstm_cell/kernel'] as
+        tf.Tensor2D;
+      lstmBias2 = vars['rnn/multi_rnn_cell/cell_1/basic_lstm_cell/bias'] as
+        tf.Tensor1D;
 
-        lstmKernel3 =
-            vars['rnn/multi_rnn_cell/cell_2/basic_lstm_cell/kernel'] as
-            tf.Tensor2D;
-        lstmBias3 = vars['rnn/multi_rnn_cell/cell_2/basic_lstm_cell/bias'] as
-            tf.Tensor1D;
+      lstmKernel3 =
+        vars['rnn/multi_rnn_cell/cell_2/basic_lstm_cell/kernel'] as
+        tf.Tensor2D;
+      lstmBias3 = vars['rnn/multi_rnn_cell/cell_2/basic_lstm_cell/bias'] as
+        tf.Tensor1D;
 
-        fcB = vars['fully_connected/biases'] as tf.Tensor1D;
-        fcW = vars['fully_connected/weights'] as tf.Tensor2D;
-        modelReady = true;
-        resetRnn();
-      });
+      fcB = vars['fully_connected/biases'] as tf.Tensor1D;
+      fcW = vars['fully_connected/weights'] as tf.Tensor2D;
+      modelReady = true;
+      resetRnn();
+    });
 }
 
 function resetRnn() {
@@ -188,38 +189,37 @@ function resize() {
 resize();
 
 const densityControl =
-    document.getElementById('note-density') as HTMLInputElement;
+  document.getElementById('note-density') as HTMLInputElement;
 const densityDisplay = document.getElementById('note-density-display');
 const conditioningOffElem =
-    document.getElementById('conditioning-off') as HTMLInputElement;
+  document.getElementById('conditioning-off') as HTMLInputElement;
 conditioningOffElem.onchange = disableConditioning;
 const conditioningOnElem =
-    document.getElementById('conditioning-on') as HTMLInputElement;
+  document.getElementById('conditioning-on') as HTMLInputElement;
 conditioningOnElem.onchange = enableConditioning;
 setTimeout(() => disableConditioning());
 
 const conditioningControlsElem =
-    document.getElementById('conditioning-controls') as HTMLDivElement;
+  document.getElementById('conditioning-controls') as HTMLDivElement;
 
 const gainSliderElement = document.getElementById('gain') as HTMLInputElement;
 const gainDisplayElement =
-    document.getElementById('gain-display') as HTMLSpanElement;
+  document.getElementById('gain-display') as HTMLSpanElement;
 let globalGain = +gainSliderElement.value;
-gainDisplayElement.innerText = globalGain.toString();
 gainSliderElement.addEventListener('input', () => {
-  globalGain = +gainSliderElement.value;
-  gainDisplayElement.innerText = globalGain.toString();
+  updateGain(+gainSliderElement.value);
 });
 
 const notes = ['c', 'cs', 'd', 'ds', 'e', 'f', 'fs', 'g', 'gs', 'a', 'as', 'b'];
 
 const pitchHistogramElements = notes.map(
-    note => document.getElementById('pitch-' + note) as HTMLInputElement);
+  note => document.getElementById('pitch-' + note) as HTMLInputElement);
 const histogramDisplayElements = notes.map(
-    note => document.getElementById('hist-' + note) as HTMLDivElement);
+  note => document.getElementById('hist-' + note) as HTMLDivElement);
 
 let preset1 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 let preset2 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+let presets: { [key: string]: any } = {};
 
 try {
   parseHash();
@@ -275,30 +275,43 @@ function disableConditioning() {
   updateConditioningParams();
 }
 
+function updateGain(gain: number) {
+  globalGain = gain;
+  gainDisplayElement.innerText = globalGain.toString();
+  gainSliderElement.value = globalGain.toString();
+}
+
+function updateNoteDensity(noteDensityIdx: number) {
+  if (noteDensityEncoding != null) {
+    noteDensityEncoding.dispose();
+    noteDensityEncoding = null;
+  }
+  let noteDensity = DENSITY_BIN_RANGES[noteDensityIdx];
+  densityDisplay.innerHTML = noteDensity.toString();
+  densityControl.value = noteDensityIdx.toString();
+  noteDensityEncoding =
+    tf.oneHot(
+      tf.tensor1d([noteDensityIdx + 1], 'int32'),
+      DENSITY_BIN_RANGES.length + 1).as1D();
+}
+
 function updateConditioningParams() {
   const pitchHistogram = pitchHistogramElements.map(e => {
     return parseInt(e.value, 10) || 0;
   });
   updateDisplayHistogram(pitchHistogram);
 
-  if (noteDensityEncoding != null) {
-    noteDensityEncoding.dispose();
-    noteDensityEncoding = null;
-  }
+  globalGain = +gainSliderElement.value;
+  updateGain(+gainSliderElement.value);
+
+  noteDensityIdx = parseInt(densityControl.value, 10) || 0;
+  updateNoteDensity(noteDensityIdx);
 
   window.location.assign(
-      '#' + densityControl.value + '|' + pitchHistogram.join(',') + '|' +
-      preset1.join(',') + '|' + preset2.join(',') + '|' +
-      (conditioned ? 'true' : 'false'));
+    '#' + densityControl.value + '|' + pitchHistogram.join(',') + '|' +
+    preset1.join(',') + '|' + preset2.join(',') + '|' +
+    (conditioned ? 'true' : 'false'));
 
-  const noteDensityIdx = parseInt(densityControl.value, 10) || 0;
-  const noteDensity = DENSITY_BIN_RANGES[noteDensityIdx];
-  densityDisplay.innerHTML = noteDensity.toString();
-
-  noteDensityEncoding =
-      tf.oneHot(
-          tf.tensor1d([noteDensityIdx + 1], 'int32'),
-          DENSITY_BIN_RANGES.length + 1).as1D();
 
   if (pitchHistogramEncoding != null) {
     pitchHistogramEncoding.dispose();
@@ -342,7 +355,7 @@ function updateDisplayHistogram(hist: number[]) {
 
   for (let i = 0; i < hist.length; i++) {
     histogramDisplayElements[i].style.height =
-        (100 * (hist[i] / sum)).toString() + 'px';
+      (100 * (hist[i] / sum)).toString() + 'px';
   }
 }
 
@@ -370,42 +383,94 @@ document.getElementById('reset-rnn').onclick = () => {
   resetRnn();
 };
 
-document.getElementById('preset-1').onclick = () => {
+/*document.getElementById('preset-1').onclick = () => {
   updatePitchHistogram(preset1);
-};
+  console.log('preset-1', presets['test']);
+  updateNoteDensity(presets['test']['noteDensityIdx']);
+  updateGain(presets['test']['gain']);
+};*/
 
-document.getElementById('preset-2').onclick = () => {
+/*document.getElementById('preset-2').onclick = () => {
   updatePitchHistogram(preset2);
-};
+};*/
 
 document.getElementById('save-1').onclick = () => {
-  preset1 = pitchHistogramElements.map((e) => {
+  console.log("SAVE PRESET 1");
+  let pitchHistogram = pitchHistogramElements.map((e) => {
     return parseInt(e.value, 10) || 0;
   });
   updateConditioningParams();
+
+  const numPresets = Object.keys(presets).length;
+  const presetName = 'preset ' + (numPresets + 1);
+  presets[presetName] = { 'pitchHistogram': pitchHistogram, 'noteDensityIdx': noteDensityIdx, 'gain': globalGain };
+  addPresetButton(presetName);
 };
 
-document.getElementById('save-2').onclick = () => {
+function addPresetButton(name: string) {
+  //  <input type="button" value="Preset 1" id="preset-1" class="ui-condition">
+
+  let presetContainer: HTMLElement = document.createElement("div");
+  presetContainer.setAttribute("class", "presetcontainer");
+  let preset: HTMLElement = document.createElement("input");
+  preset.setAttribute("type", "button");
+  preset.setAttribute("value", name);
+  preset.setAttribute("id", name);
+  preset.setAttribute("class", "ui-condition");
+
+  let presetTextfield: HTMLInputElement = document.createElement("input");
+  presetTextfield.setAttribute("type", "text");
+  presetTextfield.setAttribute("size", "20");
+
+  const presetProperties = presets[name];
+  presetContainer.appendChild(preset);
+  presetContainer.appendChild(presetTextfield);
+  document.getElementById("presets").appendChild(presetContainer);
+  preset.onclick = () => {
+    updatePitchHistogram(presetProperties['pitchHistogram']);
+    console.log('preset-1', presetProperties);
+    updateNoteDensity(presetProperties['noteDensityIdx']);
+    updateGain(presetProperties['gain']);
+  };
+
+  presetTextfield.addEventListener("keyup", (e) => {
+    if (e.keyCode == 13) {
+
+      let newName = presetTextfield.value;
+      preset.setAttribute("value", newName);
+      preset.setAttribute("id", newName);
+      presetTextfield.value = "";
+      // console.log(presetTextfield.getAttribute("value"), presetTextfield.value);
+    }
+  });
+}
+
+/*document.getElementById('save-2').onclick = () => {
   preset2 = pitchHistogramElements.map((e) => {
     return parseInt(e.value, 10) || 0;
   });
   updateConditioningParams();
-};
+};*/
 
 function getConditioning(): tf.Tensor1D {
+  /* let noteDensityEncoding =
+     tf.oneHot(
+       tf.tensor1d([noteDensityIdx + 1], 'int32'),
+       DENSITY_BIN_RANGES.length + 1).as1D();
+ */
   return tf.tidy(() => {
     if (!conditioned) {
       // TODO(nsthorat): figure out why we have to cast these shapes to numbers.
       // The linter is complaining, though VSCode can infer the types.
       const size = 1 + (noteDensityEncoding.shape[0] as number) +
-          (pitchHistogramEncoding.shape[0] as number);
+        (pitchHistogramEncoding.shape[0] as number);
       const conditioning: tf.Tensor1D =
-          tf.oneHot(tf.tensor1d([0], 'int32'), size).as1D();
+        tf.oneHot(tf.tensor1d([0], 'int32'), size).as1D();
       return conditioning;
     } else {
       const axis = 0;
       const conditioningValues =
-          noteDensityEncoding.concat(pitchHistogramEncoding, axis);
+        noteDensityEncoding.concat(pitchHistogramEncoding, axis);
       return tf.tensor1d([0], 'int32').concat(conditioningValues, axis);
     }
   });
@@ -418,11 +483,11 @@ async function generateStep(loopId: number) {
   }
 
   const lstm1 = (data: tf.Tensor2D, c: tf.Tensor2D, h: tf.Tensor2D) =>
-      tf.basicLSTMCell(forgetBias, lstmKernel1, lstmBias1, data, c, h);
+    tf.basicLSTMCell(forgetBias, lstmKernel1, lstmBias1, data, c, h);
   const lstm2 = (data: tf.Tensor2D, c: tf.Tensor2D, h: tf.Tensor2D) =>
-      tf.basicLSTMCell(forgetBias, lstmKernel2, lstmBias2, data, c, h);
+    tf.basicLSTMCell(forgetBias, lstmKernel2, lstmBias2, data, c, h);
   const lstm3 = (data: tf.Tensor2D, c: tf.Tensor2D, h: tf.Tensor2D) =>
-      tf.basicLSTMCell(forgetBias, lstmKernel3, lstmBias3, data, c, h);
+    tf.basicLSTMCell(forgetBias, lstmKernel3, lstmBias3, data, c, h);
 
   let outputs: tf.Scalar[] = [];
   [c, h, outputs] = tf.tidy(() => {
@@ -441,7 +506,7 @@ async function generateStep(loopId: number) {
       const axis = 0;
       const input = conditioning.concat(eventInput, axis).toFloat();
       const output =
-          tf.multiRNNCell([lstm1, lstm2, lstm3], input.as2D(1, -1), c, h);
+        tf.multiRNNCell([lstm1, lstm2, lstm3], input.as2D(1, -1), c, h);
       c.forEach(c => c.dispose());
       h.forEach(h => h.dispose());
       c = output[0];
@@ -464,12 +529,12 @@ async function generateStep(loopId: number) {
 
   if (piano.now() - currentPianoTimeSec > MAX_GENERATION_LAG_SECONDS) {
     console.warn(
-        `Generation is ${piano.now() - currentPianoTimeSec} seconds behind, ` +
-        `which is over ${MAX_NOTE_DURATION_SECONDS}. Resetting time!`);
+      `Generation is ${piano.now() - currentPianoTimeSec} seconds behind, ` +
+      `which is over ${MAX_NOTE_DURATION_SECONDS}. Resetting time!`);
     currentPianoTimeSec = piano.now();
   }
   const delta = Math.max(
-      0, currentPianoTimeSec - piano.now() - GENERATION_BUFFER_SECONDS);
+    0, currentPianoTimeSec - piano.now() - GENERATION_BUFFER_SECONDS);
   setTimeout(() => generateStep(loopId), delta * 1000);
 }
 
@@ -480,7 +545,7 @@ let activeMidiOutputDevice: any = null;
 let activeMidiInputDevice: any = null;
 (async () => {
   const midiOutDropdownContainer =
-      document.getElementById('midi-out-container');
+    document.getElementById('midi-out-container');
   const midiInDropdownContainer = document.getElementById('midi-in-container');
   try {
     // tslint:disable-next-line:no-any
@@ -488,9 +553,9 @@ let activeMidiInputDevice: any = null;
     midi = await navigator.requestMIDIAccess();
 
     const midiOutDropdown =
-        document.getElementById('midi-out') as HTMLSelectElement;
+      document.getElementById('midi-out') as HTMLSelectElement;
     const midiInDropdown =
-        document.getElementById('midi-in') as HTMLSelectElement;
+      document.getElementById('midi-in') as HTMLSelectElement;
 
     let outputDeviceCount = 0;
     // tslint:disable-next-line:no-any
@@ -513,7 +578,7 @@ let activeMidiInputDevice: any = null;
 
     midiOutDropdown.addEventListener('change', () => {
       activeMidiOutputDevice =
-          midiOutputDevices[midiOutDropdown.selectedIndex - 1];
+        midiOutputDevices[midiOutDropdown.selectedIndex - 1];
     });
 
     if (outputDeviceCount === 0) {
@@ -542,7 +607,7 @@ let activeMidiInputDevice: any = null;
     // tslint:disable-next-line:no-any
     const setActiveMidiInputDevice = (device: any) => {
       if (activeMidiInputDevice != null) {
-        activeMidiInputDevice.onmidimessage = () => {};
+        activeMidiInputDevice.onmidimessage = () => { };
       }
       activeMidiInputDevice = device;
       // tslint:disable-next-line:no-any
@@ -558,7 +623,7 @@ let activeMidiInputDevice: any = null;
     };
     midiInDropdown.addEventListener('change', () => {
       setActiveMidiInputDevice(
-          midiInputDevices[midiInDropdown.selectedIndex - 1]);
+        midiInputDevices[midiInDropdown.selectedIndex - 1]);
     });
     if (inputDeviceCount === 0) {
       midiInDropdownContainer.innerText = MIDI_NO_INPUT_DEVICES_FOUND_MESSAGE;
@@ -631,20 +696,20 @@ function playOutput(index: number) {
         if (activeMidiOutputDevice != null) {
           try {
             activeMidiOutputDevice.send(
-                [
-                  MIDI_EVENT_ON, noteNum,
-                  Math.min(Math.floor(currentVelocity * globalGain), 127)
-                ],
-                Math.floor(1000 * currentPianoTimeSec) - pianoStartTimestampMs);
+              [
+                MIDI_EVENT_ON, noteNum,
+                Math.min(Math.floor(currentVelocity * globalGain), 127)
+              ],
+              Math.floor(1000 * currentPianoTimeSec) - pianoStartTimestampMs);
           } catch (e) {
             console.log(
-                'Error sending midi note on event to midi output device:');
+              'Error sending midi note on event to midi output device:');
             console.log(e);
           }
         }
 
         return piano.keyDown(
-            noteNum, currentPianoTimeSec, currentVelocity * globalGain / 100);
+          noteNum, currentPianoTimeSec, currentVelocity * globalGain / 100);
       } else if (eventType === 'note_off') {
         const noteNum = index - offset;
 
@@ -655,15 +720,15 @@ function playOutput(index: number) {
           return;
         }
         const timeSec =
-            Math.max(currentPianoTimeSec, activeNoteEndTimeSec + .5);
+          Math.max(currentPianoTimeSec, activeNoteEndTimeSec + .5);
 
         if (activeMidiOutputDevice != null) {
           activeMidiOutputDevice.send(
-              [
-                MIDI_EVENT_OFF, noteNum,
-                Math.min(Math.floor(currentVelocity * globalGain), 127)
-              ],
-              Math.floor(timeSec * 1000) - pianoStartTimestampMs);
+            [
+              MIDI_EVENT_OFF, noteNum,
+              Math.min(Math.floor(currentVelocity * globalGain), 127)
+            ],
+            Math.floor(timeSec * 1000) - pianoStartTimestampMs);
         }
         piano.keyUp(noteNum, timeSec);
         activeNotes.delete(noteNum);
@@ -673,10 +738,10 @@ function playOutput(index: number) {
         activeNotes.forEach((timeSec, noteNum) => {
           if (currentPianoTimeSec - timeSec > MAX_NOTE_DURATION_SECONDS) {
             console.info(
-                `Note ${noteNum} has been active for ${
-                    currentPianoTimeSec - timeSec}, ` +
-                `seconds which is over ${MAX_NOTE_DURATION_SECONDS}, will ` +
-                `release.`);
+              `Note ${noteNum} has been active for ${
+              currentPianoTimeSec - timeSec}, ` +
+              `seconds which is over ${MAX_NOTE_DURATION_SECONDS}, will ` +
+              `release.`);
             if (activeMidiOutputDevice != null) {
               activeMidiOutputDevice.send([
                 MIDI_EVENT_OFF, noteNum,
