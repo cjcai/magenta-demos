@@ -51,9 +51,15 @@ const PITCH_HISTOGRAM_SIZE = NOTES_PER_OCTAVE;
 const RESET_RNN_FREQUENCY_MS = 30000;
 
 let pitchHistogramEncoding: tf.Tensor1D;
+let pitchHistogram: any = null;
 let noteDensityEncoding: tf.Tensor1D;
 let noteDensityIdx = 0;
 let conditioned = true;
+
+let recordingPreset = false;
+let currPresetRecording: any = null;
+let recordTimeTimeout: ReturnType<typeof setInterval> = null;
+
 
 let currentPianoTimeSec = 0;
 // When the piano roll starts in browser-time via performance.now().
@@ -302,7 +308,7 @@ function updateNoteDensity(noteDensityIdx: number) {
 }
 
 function updateConditioningParams() {
-  const pitchHistogram = pitchHistogramElements.map(e => {
+  pitchHistogram = pitchHistogramElements.map(e => {
     return parseInt(e.value, 10) || 0;
   });
   updateDisplayHistogram(pitchHistogram);
@@ -324,13 +330,17 @@ function updateConditioningParams() {
     pitchHistogramEncoding = null;
   }
   const buffer = tf.buffer<tf.Rank.R1>([PITCH_HISTOGRAM_SIZE], 'float32');
-  const pitchHistogramTotal = pitchHistogram.reduce((prev, val) => {
+  const pitchHistogramTotal = pitchHistogram.reduce((prev: any, val: any) => {
     return prev + val;
   });
   for (let i = 0; i < PITCH_HISTOGRAM_SIZE; i++) {
     buffer.set(pitchHistogram[i] / pitchHistogramTotal, i);
   }
   pitchHistogramEncoding = buffer.toTensor();
+
+  if (recordingPreset) {
+    updatePresetRecording();
+  }
 }
 
 document.getElementById('note-density').oninput = updateConditioningParams;
@@ -415,16 +425,47 @@ document.getElementById('playcontrol').onclick = () => {
 };*/
 
 document.getElementById('save-preset').onclick = () => {
-  let pitchHistogram = pitchHistogramElements.map((e) => {
-    return parseInt(e.value, 10) || 0;
-  });
   updateConditioningParams();
 
+  const preset = { 'pitchHistogram': pitchHistogram, 'noteDensityIdx': noteDensityIdx, 'gain': globalGain };
+  savePreset(preset);
+};
+
+function savePreset(preset: any) {
   const numPresets = Object.keys(presets).length;
   const presetName = 'preset ' + (numPresets + 1);
-  presets[presetName] = { 'pitchHistogram': pitchHistogram, 'noteDensityIdx': noteDensityIdx, 'gain': globalGain };
+  presets[presetName] = preset;
   addPresetButton(presetName);
+}
+
+document.getElementById('record-preset').onclick = () => {
+  const recordElem = document.getElementById('record-preset');
+
+  let recordTimeElem = document.getElementById('record-time');
+  if (recordElem.getAttribute("value") == "Record Preset") {
+    recordElem.setAttribute("value", "Stop Recording");
+    updateConditioningParams();
+    recordingPreset = true;
+    currPresetRecording = [];
+    recordTimeElem.innerHTML = '0';
+    recordTimeTimeout = setInterval(() => {
+      recordTimeElem.innerHTML = (parseInt(recordTimeElem.innerHTML) + 1).toString();
+    }, 1000);
+    console.log("started", recordTimeTimeout);
+  } else {
+    recordElem.setAttribute("value", "Record Preset");
+    recordingPreset = false;
+    savePreset(currPresetRecording);
+    console.log("cleared", recordTimeTimeout);
+    clearInterval(recordTimeTimeout);
+    console.log("cleared", recordTimeTimeout);
+    // recordTimeElem.innerHTML = "";
+  }
 };
+
+function updatePresetRecording() {
+  currPresetRecording.push({ 'pitchHistogram': pitchHistogram, 'noteDensityIdx': noteDensityIdx, 'gain': globalGain });
+}
 
 function addPresetButton(name: string) {
   //  <input type="button" value="Preset 1" id="preset-1" class="ui-condition">
@@ -440,8 +481,9 @@ function addPresetButton(name: string) {
   let presetTextfield: HTMLInputElement = document.createElement("input");
   presetTextfield.setAttribute("type", "text");
   presetTextfield.setAttribute("size", "20");
+  presetTextfield.setAttribute("placeholder", "name it (e.g. peaceful)");
 
-  const presetProperties = presets[name];
+  let thisPreset = presets[name];
   presetContainer.appendChild(preset);
   presetContainer.appendChild(presetTextfield);
   document.getElementById("presets").appendChild(presetContainer);
@@ -449,20 +491,27 @@ function addPresetButton(name: string) {
   let presetTimeout: ReturnType<typeof setTimeout> = null;
   let ticks = 0;
   function update() {
+    let presetProperties = Array.isArray(thisPreset) ? thisPreset[ticks] : thisPreset;
     updatePitchHistogram(presetProperties['pitchHistogram']);
-    console.log('preset-1', presetProperties);
-    updateNoteDensity(presetProperties['noteDensityIdx'] + 1);
+    updateNoteDensity(presetProperties['noteDensityIdx']);
     updateGain(presetProperties['gain']);
-    if (ticks == 4) {
-      clearTimeout(presetTimeout);
-    } else {
-      setTimeout(update, 1000);
+    console.log("TICK", ticks, pitchHistogram, noteDensityIdx, globalGain);
+
+    if (!Array.isArray(thisPreset)) {
+      return;
     }
+    ticks += 1;
+    if (ticks == thisPreset.length) {
+      clearTimeout(presetTimeout);
+      return;
+    } else {
+      setTimeout(update, 3000);
+    }
+
 
   }
   preset.onclick = () => {
-    presetTimeout = setTimeout(update, 1000);
-
+    update();
   };
 
   presetTextfield.addEventListener("keyup", (e) => {
@@ -471,6 +520,7 @@ function addPresetButton(name: string) {
       let newName = presetTextfield.value;
       preset.setAttribute("value", newName);
       preset.setAttribute("id", newName);
+      preset.setAttribute("placeholer", "");
       presetTextfield.value = "";
       // console.log(presetTextfield.getAttribute("value"), presetTextfield.value);
     }

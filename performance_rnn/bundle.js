@@ -37734,9 +37734,13 @@ var DENSITY_BIN_RANGES = [1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0];
 var PITCH_HISTOGRAM_SIZE = NOTES_PER_OCTAVE;
 var RESET_RNN_FREQUENCY_MS = 30000;
 var pitchHistogramEncoding;
+var pitchHistogram = null;
 var noteDensityEncoding;
 var noteDensityIdx = 0;
 var conditioned = true;
+var recordingPreset = false;
+var currPresetRecording = null;
+var recordTimeTimeout = null;
 var currentPianoTimeSec = 0;
 var pianoStartTimestampMs = 0;
 var currentVelocity = 100;
@@ -37928,7 +37932,7 @@ function updateNoteDensity(noteDensityIdx) {
         tf.oneHot(tf.tensor1d([noteDensityIdx + 1], 'int32'), DENSITY_BIN_RANGES.length + 1).as1D();
 }
 function updateConditioningParams() {
-    var pitchHistogram = pitchHistogramElements.map(function (e) {
+    pitchHistogram = pitchHistogramElements.map(function (e) {
         return parseInt(e.value, 10) || 0;
     });
     updateDisplayHistogram(pitchHistogram);
@@ -37951,6 +37955,9 @@ function updateConditioningParams() {
         buffer.set(pitchHistogram[i] / pitchHistogramTotal, i);
     }
     pitchHistogramEncoding = buffer.toTensor();
+    if (recordingPreset) {
+        updatePresetRecording();
+    }
 }
 document.getElementById('note-density').oninput = updateConditioningParams;
 pitchHistogramElements.forEach(function (e) {
@@ -38011,17 +38018,43 @@ document.getElementById('playcontrol').onclick = function () {
         generateStep(currentLoopId);
     }
 };
-document.getElementById('save-1').onclick = function () {
-    console.log("SAVE PRESET 1");
-    var pitchHistogram = pitchHistogramElements.map(function (e) {
-        return parseInt(e.value, 10) || 0;
-    });
+document.getElementById('save-preset').onclick = function () {
     updateConditioningParams();
+    var preset = { 'pitchHistogram': pitchHistogram, 'noteDensityIdx': noteDensityIdx, 'gain': globalGain };
+    savePreset(preset);
+};
+function savePreset(preset) {
     var numPresets = Object.keys(presets).length;
     var presetName = 'preset ' + (numPresets + 1);
-    presets[presetName] = { 'pitchHistogram': pitchHistogram, 'noteDensityIdx': noteDensityIdx, 'gain': globalGain };
+    presets[presetName] = preset;
     addPresetButton(presetName);
+}
+document.getElementById('record-preset').onclick = function () {
+    var recordElem = document.getElementById('record-preset');
+    var recordTimeElem = document.getElementById('record-time');
+    if (recordElem.getAttribute("value") == "Record Preset") {
+        recordElem.setAttribute("value", "Stop Recording");
+        updateConditioningParams();
+        recordingPreset = true;
+        currPresetRecording = [];
+        recordTimeElem.innerHTML = '0';
+        recordTimeTimeout = setInterval(function () {
+            recordTimeElem.innerHTML = (parseInt(recordTimeElem.innerHTML) + 1).toString();
+        }, 1000);
+        console.log("started", recordTimeTimeout);
+    }
+    else {
+        recordElem.setAttribute("value", "Record Preset");
+        recordingPreset = false;
+        savePreset(currPresetRecording);
+        console.log("cleared", recordTimeTimeout);
+        clearInterval(recordTimeTimeout);
+        console.log("cleared", recordTimeTimeout);
+    }
 };
+function updatePresetRecording() {
+    currPresetRecording.push({ 'pitchHistogram': pitchHistogram, 'noteDensityIdx': noteDensityIdx, 'gain': globalGain });
+}
 function addPresetButton(name) {
     var presetContainer = document.createElement("div");
     presetContainer.setAttribute("class", "presetcontainer");
@@ -38033,21 +38066,40 @@ function addPresetButton(name) {
     var presetTextfield = document.createElement("input");
     presetTextfield.setAttribute("type", "text");
     presetTextfield.setAttribute("size", "20");
-    var presetProperties = presets[name];
+    presetTextfield.setAttribute("placeholder", "name it (e.g. peaceful)");
+    var thisPreset = presets[name];
     presetContainer.appendChild(preset);
     presetContainer.appendChild(presetTextfield);
     document.getElementById("presets").appendChild(presetContainer);
-    preset.onclick = function () {
+    var presetTimeout = null;
+    var ticks = 0;
+    function update() {
+        var presetProperties = Array.isArray(thisPreset) ? thisPreset[ticks] : thisPreset;
         updatePitchHistogram(presetProperties['pitchHistogram']);
-        console.log('preset-1', presetProperties);
         updateNoteDensity(presetProperties['noteDensityIdx']);
         updateGain(presetProperties['gain']);
+        console.log("TICK", ticks, pitchHistogram, noteDensityIdx, globalGain);
+        if (!Array.isArray(thisPreset)) {
+            return;
+        }
+        ticks += 1;
+        if (ticks == thisPreset.length) {
+            clearTimeout(presetTimeout);
+            return;
+        }
+        else {
+            setTimeout(update, 3000);
+        }
+    }
+    preset.onclick = function () {
+        update();
     };
     presetTextfield.addEventListener("keyup", function (e) {
         if (e.keyCode == 13) {
             var newName = presetTextfield.value;
             preset.setAttribute("value", newName);
             preset.setAttribute("id", newName);
+            preset.setAttribute("placeholer", "");
             presetTextfield.value = "";
         }
     });
