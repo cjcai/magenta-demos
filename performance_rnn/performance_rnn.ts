@@ -375,7 +375,40 @@ function updateDisplayHistogram(hist: number[]) {
   }
 }
 
-document.getElementById('c-major').onclick = () => {
+document.getElementById("key").onchange = () => {
+  const key = (document.getElementById("key") as HTMLSelectElement).value;
+  console.log("KEY", key);
+  const offset = keyOffset[key];
+  let histogram = [2, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+  let shiftedHistogram = histogram.slice(histogram.length - offset, histogram.length).concat(histogram.slice(0, histogram.length - offset));
+  updatePitchHistogram(shiftedHistogram);
+}
+
+document.getElementById("chord").onchange = () => {
+  const key = (document.getElementById("chord") as HTMLSelectElement).value;
+  console.log("KEY", key);
+  const offset = keyOffset[key];
+  let histogram = [2, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0];
+  let shiftedHistogram = histogram.slice(histogram.length - offset, histogram.length).concat(histogram.slice(0, histogram.length - offset));
+  updatePitchHistogram(shiftedHistogram);
+}
+
+const keyOffset: { [id: string]: number } = {
+  "C Major": 0,
+  "C# Major": 1,
+  "D Major": 2,
+  "D# Major": 3,
+  "E Major": 4,
+  "F Major": 5,
+  "F# Major": 6,
+  "G Major": 7,
+  "G# Major": 8,
+  "A Major": 9,
+  "A# Major": 10,
+  "B Major": 11
+}
+
+/*document.getElementById('c-major').onclick = () => {
   updatePitchHistogram([2, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1]);
 };
 
@@ -385,7 +418,7 @@ document.getElementById('f-major').onclick = () => {
 
 document.getElementById('d-minor').onclick = () => {
   updatePitchHistogram([1, 0, 2, 0, 1, 1, 0, 1, 0, 1, 1, 0]);
-};
+};*/
 
 document.getElementById('whole-tone').onclick = () => {
   updatePitchHistogram([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]);
@@ -505,7 +538,7 @@ function addPresetButton(name: string) {
       clearTimeout(presetTimeout);
       return;
     } else {
-      setTimeout(update, 3000);
+      setTimeout(update, 10000);
     }
 
 

@@ -37987,14 +37987,35 @@ function updateDisplayHistogram(hist) {
             (100 * (hist[i] / sum)).toString() + 'px';
     }
 }
-document.getElementById('c-major').onclick = function () {
-    updatePitchHistogram([2, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1]);
+document.getElementById("key").onchange = function () {
+    var key = document.getElementById("key").value;
+    console.log("KEY", key);
+    var offset = keyOffset[key];
+    var histogram = [2, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+    var shiftedHistogram = histogram.slice(histogram.length - offset, histogram.length).concat(histogram.slice(0, histogram.length - offset));
+    updatePitchHistogram(shiftedHistogram);
 };
-document.getElementById('f-major').onclick = function () {
-    updatePitchHistogram([1, 0, 1, 0, 1, 2, 0, 1, 0, 1, 1, 0]);
+document.getElementById("chord").onchange = function () {
+    var key = document.getElementById("chord").value;
+    console.log("KEY", key);
+    var offset = keyOffset[key];
+    var histogram = [2, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0];
+    var shiftedHistogram = histogram.slice(histogram.length - offset, histogram.length).concat(histogram.slice(0, histogram.length - offset));
+    updatePitchHistogram(shiftedHistogram);
 };
-document.getElementById('d-minor').onclick = function () {
-    updatePitchHistogram([1, 0, 2, 0, 1, 1, 0, 1, 0, 1, 1, 0]);
+var keyOffset = {
+    "C Major": 0,
+    "C# Major": 1,
+    "D Major": 2,
+    "D# Major": 3,
+    "E Major": 4,
+    "F Major": 5,
+    "F# Major": 6,
+    "G Major": 7,
+    "G# Major": 8,
+    "A Major": 9,
+    "A# Major": 10,
+    "B Major": 11
 };
 document.getElementById('whole-tone').onclick = function () {
     updatePitchHistogram([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]);
@@ -38088,7 +38109,7 @@ function addPresetButton(name) {
             return;
         }
         else {
-            setTimeout(update, 3000);
+            setTimeout(update, 10000);
         }
     }
     preset.onclick = function () {
