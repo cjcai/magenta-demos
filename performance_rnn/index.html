@@ -72,10 +72,17 @@ limitations under the License.
       flex-direction: column;
     }
 
-    #record-preset {
-      background-color: #f08080;
+    .presetSelected {
+      border: 3px solid black;
     }
 
+    #record-preset {
+      background-color: #ADD8E6;
+    }
+
+    #save-preset {
+      background-color: #ADD8E6;
+    }
 
     #presets {
       margin: 20px;
@@ -392,13 +399,13 @@ limitations under the License.
               <option value="B Major">B Major</option>
             </select>
             <select name="chord" id="chord">
-              <option value="C Major">C Major</option>
-              <option value="D Major">D Major</option>
-              <option value="E Major">E Major</option>
-              <option value="F Major">F Major</option>
-              <option value="G Major">G Major</option>
-              <option value="A Major">A Major</option>
-              <option value="B Major">B Major</option>
+              <option value="1">1 ("home")</option>
+              <option value="2">2 ("away")</option>
+              <option value="3">3 (?)</option>
+              <option value="4">4 ("away")</option>
+              <option value="5">5 ("coming back")</option>
+              <option value="6">6 ("home")</option>
+              <option value="7">7 ("coming back")</option>
             </select>
             <!--  <input type="button" value="C Major" id="c-major" class="ui-condition">
             <input type="button" value="F Major" id="f-major" class="ui-condition">

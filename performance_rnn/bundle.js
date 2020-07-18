@@ -38083,7 +38083,7 @@ function addPresetButton(name) {
     preset.setAttribute("type", "button");
     preset.setAttribute("value", name);
     preset.setAttribute("id", name);
-    preset.setAttribute("class", "ui-condition");
+    preset.setAttribute("class", "ui-condition preset");
     var presetTextfield = document.createElement("input");
     presetTextfield.setAttribute("type", "text");
     presetTextfield.setAttribute("size", "20");
@@ -38113,6 +38113,11 @@ function addPresetButton(name) {
         }
     }
     preset.onclick = function () {
+        var presetElems = document.getElementsByClassName("preset");
+        for (var i = 0; i < presetElems.length; i++) {
+            presetElems[i].classList.remove("presetSelected");
+        }
+        preset.classList.add("presetSelected");
         update();
     };
     presetTextfield.addEventListener("keyup", function (e) {

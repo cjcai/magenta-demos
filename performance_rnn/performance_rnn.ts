@@ -509,7 +509,7 @@ function addPresetButton(name: string) {
   preset.setAttribute("type", "button");
   preset.setAttribute("value", name);
   preset.setAttribute("id", name);
-  preset.setAttribute("class", "ui-condition");
+  preset.setAttribute("class", "ui-condition preset");
 
   let presetTextfield: HTMLInputElement = document.createElement("input");
   presetTextfield.setAttribute("type", "text");
@@ -544,6 +544,12 @@ function addPresetButton(name: string) {
 
   }
   preset.onclick = () => {
+    const presetElems = document.getElementsByClassName("preset");
+    for(let i = 0; i < presetElems.length; i++){
+      presetElems[i].classList.remove("presetSelected")
+    }
+    
+    preset.classList.add("presetSelected");
     update();
   };
 
