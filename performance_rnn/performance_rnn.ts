@@ -375,7 +375,7 @@ function updateDisplayHistogram(hist: number[]) {
   }
 }
 
-document.getElementById("key").onchange = () => {
+document.getElementById("key").onclick = () => {
   const key = (document.getElementById("key") as HTMLSelectElement).value;
   console.log("KEY", key);
   const offset = keyOffset[key];
@@ -385,11 +385,28 @@ document.getElementById("key").onchange = () => {
 }
 
 document.getElementById("chord").onchange = () => {
-  const key = (document.getElementById("chord") as HTMLSelectElement).value;
-  console.log("KEY", key);
+  const chord = (document.getElementById("chord") as HTMLSelectElement).value.substring(0);
+  const key = (document.getElementById("key") as HTMLSelectElement).value;
   const offset = keyOffset[key];
-  let histogram = [2, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0];
-  let shiftedHistogram = histogram.slice(histogram.length - offset, histogram.length).concat(histogram.slice(0, histogram.length - offset));
+  let histogram = [2, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+  const chordOffset = parseInt(chord);
+  let indices = [chordOffset, // one
+    (chordOffset + 2) > 7 ? (chordOffset + 2) % 7 : (chordOffset + 2), // three
+    (chordOffset + 4) > 7 ? (chordOffset + 4) % 7 : (chordOffset + 4)]; // five
+
+  let chordHistogram = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  let numNotesSeen = 0;
+  for (let i = 0; i < histogram.length; i++) {
+    if (histogram[i] > 0) {
+      numNotesSeen += 1;
+      if (indices.indexOf(numNotesSeen) > -1) {
+        chordHistogram[i] = 1;
+      }
+    }
+  }
+  console.log("CHORD HISTOGRAM", chordHistogram);
+  let shiftedHistogram = chordHistogram.slice(chordHistogram.length - offset, chordHistogram.length).concat(chordHistogram.slice(0, chordHistogram.length - offset));
+
   updatePitchHistogram(shiftedHistogram);
 }
 
@@ -407,6 +424,7 @@ const keyOffset: { [id: string]: number } = {
   "A# Major": 10,
   "B Major": 11
 }
+
 
 /*document.getElementById('c-major').onclick = () => {
   updatePitchHistogram([2, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1]);
@@ -545,10 +563,10 @@ function addPresetButton(name: string) {
   }
   preset.onclick = () => {
     const presetElems = document.getElementsByClassName("preset");
-    for(let i = 0; i < presetElems.length; i++){
+    for (let i = 0; i < presetElems.length; i++) {
       presetElems[i].classList.remove("presetSelected")
     }
-    
+
     preset.classList.add("presetSelected");
     update();
   };

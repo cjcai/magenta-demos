@@ -37987,7 +37987,7 @@ function updateDisplayHistogram(hist) {
             (100 * (hist[i] / sum)).toString() + 'px';
     }
 }
-document.getElementById("key").onchange = function () {
+document.getElementById("key").onclick = function () {
     var key = document.getElementById("key").value;
     console.log("KEY", key);
     var offset = keyOffset[key];
@@ -37996,11 +37996,26 @@ document.getElementById("key").onchange = function () {
     updatePitchHistogram(shiftedHistogram);
 };
 document.getElementById("chord").onchange = function () {
-    var key = document.getElementById("chord").value;
-    console.log("KEY", key);
+    var chord = document.getElementById("chord").value.substring(0);
+    var key = document.getElementById("key").value;
     var offset = keyOffset[key];
-    var histogram = [2, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0];
-    var shiftedHistogram = histogram.slice(histogram.length - offset, histogram.length).concat(histogram.slice(0, histogram.length - offset));
+    var histogram = [2, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+    var chordOffset = parseInt(chord);
+    var indices = [chordOffset,
+        (chordOffset + 2) > 7 ? (chordOffset + 2) % 7 : (chordOffset + 2),
+        (chordOffset + 4) > 7 ? (chordOffset + 4) % 7 : (chordOffset + 4)];
+    var chordHistogram = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    var numNotesSeen = 0;
+    for (var i = 0; i < histogram.length; i++) {
+        if (histogram[i] > 0) {
+            numNotesSeen += 1;
+            if (indices.indexOf(numNotesSeen) > -1) {
+                chordHistogram[i] = 1;
+            }
+        }
+    }
+    console.log("CHORD HISTOGRAM", chordHistogram);
+    var shiftedHistogram = chordHistogram.slice(chordHistogram.length - offset, chordHistogram.length).concat(chordHistogram.slice(0, chordHistogram.length - offset));
     updatePitchHistogram(shiftedHistogram);
 };
 var keyOffset = {
