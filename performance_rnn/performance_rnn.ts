@@ -374,8 +374,9 @@ function updateDisplayHistogram(hist: number[]) {
       (100 * (hist[i] / sum)).toString() + 'px';
   }
 }
-
+alert("test");
 document.getElementById("key").onchange = () => {
+  alert("on change");
   const key = (document.getElementById("key") as HTMLSelectElement).value;
   console.log("KEY", key);
   const offset = keyOffset[key];
