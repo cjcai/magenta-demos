@@ -37987,7 +37987,9 @@ function updateDisplayHistogram(hist) {
             (100 * (hist[i] / sum)).toString() + 'px';
     }
 }
-document.getElementById("key").onclick = function () {
+alert("test");
+document.getElementById("key").onchange = function () {
+    alert("on change");
     var key = document.getElementById("key").value;
     console.log("KEY", key);
     var offset = keyOffset[key];
