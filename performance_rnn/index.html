@@ -80,6 +80,10 @@ limitations under the License.
       background-color: #ADD8E6;
     }
 
+    #record-time {
+      color: red;
+    }
+
     #save-preset {
       background-color: #ADD8E6;
     }
@@ -316,7 +320,7 @@ limitations under the License.
                 <div id="hist-cs" class="histogram-value"></div>
               </div>
               <input class="pitch ui-condition" id="pitch-cs" type="number" min="0" value="0">
-              <br/> C#
+              <br/> Db
             </div>
             <div class="control">
               <div class="histogram-bucket">
@@ -330,7 +334,7 @@ limitations under the License.
                 <div id="hist-ds" class="histogram-value"></div>
               </div>
               <input class="pitch ui-condition" id="pitch-ds" type="number" min="0" value="0">
-              <br/> D#
+              <br/> Eb
             </div>
             <div class="control">
               <div class="histogram-bucket">
@@ -351,7 +355,7 @@ limitations under the License.
                 <div id="hist-fs" class="histogram-value"></div>
               </div>
               <input class="pitch ui-condition" id="pitch-fs" type="number" min="0" value="0">
-              <br/> F#
+              <br/> Gb
             </div>
             <div class="control">
               <div class="histogram-bucket">
@@ -365,7 +369,7 @@ limitations under the License.
                 <div id="hist-gs" class="histogram-value"></div>
               </div>
               <input class="pitch ui-condition" id="pitch-gs" type="number" min="0" value="0">
-              <br/> G#
+              <br/> Ab
             </div>
             <div class="control">
               <div class="histogram-bucket">
@@ -379,7 +383,7 @@ limitations under the License.
                 <div id="hist-as" class="histogram-value"></div>
               </div>
               <input class="pitch ui-condition" id="pitch-as" type="number" min="0" value="0">
-              <br/> A#
+              <br/> Bb
             </div>
             <div class="control">
               <div class="histogram-bucket">
@@ -397,6 +401,13 @@ limitations under the License.
               <option value="G Major">G Major</option>
               <option value="A Major">A Major</option>
               <option value="B Major">B Major</option>
+              <option value="c minor">c minor</option>
+              <option value="d minor">d minor</option>
+              <option value="e minor">e minor</option>
+              <option value="f minor">f minor</option>
+              <option value="g minor">g minor</option>
+              <option value="a minor">a minor</option>
+              <option value="b minor">b minor</option>
             </select>
             <select name="chord" id="chord">
               <option value="1">1 (chord)</option>

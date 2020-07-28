@@ -379,7 +379,7 @@ document.getElementById("key").onchange = () => {
   const key = (document.getElementById("key") as HTMLSelectElement).value;
   console.log("KEY", key);
   const offset = keyOffset[key];
-  let histogram = [2, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+  let histogram = (key.indexOf("Major") > -1) ? majorHistogram : minorHistogram;
   let shiftedHistogram = histogram.slice(histogram.length - offset, histogram.length).concat(histogram.slice(0, histogram.length - offset));
   updatePitchHistogram(shiftedHistogram);
 }
@@ -388,7 +388,7 @@ document.getElementById("chord").onchange = () => {
   const chord = (document.getElementById("chord") as HTMLSelectElement).value.substring(0);
   const key = (document.getElementById("key") as HTMLSelectElement).value;
   const offset = keyOffset[key];
-  let histogram = [2, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+  let histogram = (key.indexOf("Major") > -1) ? majorHistogram : minorHistogram;
   const chordOffset = parseInt(chord);
   let indices = [chordOffset, // one
     (chordOffset + 2) > 7 ? (chordOffset + 2) % 7 : (chordOffset + 2), // three
@@ -410,19 +410,34 @@ document.getElementById("chord").onchange = () => {
   updatePitchHistogram(shiftedHistogram);
 }
 
+const majorHistogram = [2, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+const minorHistogram = [2, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1];
+
 const keyOffset: { [id: string]: number } = {
   "C Major": 0,
+  "c minor": 0,
   "C# Major": 1,
+  "c# minor": 1,
   "D Major": 2,
+  "d minor": 2,
   "D# Major": 3,
+  "d# minor": 3,
   "E Major": 4,
+  "e minor": 4,
   "F Major": 5,
+  "f minor": 5,
   "F# Major": 6,
+  "f# minor": 6,
   "G Major": 7,
+  "g minor": 7,
   "G# Major": 8,
+  "g# minor": 8,
   "A Major": 9,
+  "a minor": 9,
   "A# Major": 10,
-  "B Major": 11
+  "a# minor": 10,
+  "B Major": 11,
+  "b minor": 11
 }
 
 
@@ -505,6 +520,7 @@ document.getElementById('record-preset').onclick = () => {
     console.log("started", recordTimeTimeout);
   } else {
     recordElem.setAttribute("value", "Record Preset");
+    recordTimeElem.innerHTML = '';
     recordingPreset = false;
     savePreset(currPresetRecording);
     console.log("cleared", recordTimeTimeout);
