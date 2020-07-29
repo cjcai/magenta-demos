@@ -76,11 +76,24 @@ limitations under the License.
       border: 3px solid black;
     }
 
-    #record-preset {
+    .not-recording {
       background-color: #ADD8E6;
     }
 
+    .recording {
+      background-color: red;
+    }
+
+    #record-events {
+      flex-direction: column;
+    }
+
+    .record-event {
+      display: flex;
+    }
+
     #record-time {
+      display: flex;
       color: red;
     }
 
@@ -424,9 +437,15 @@ limitations under the License.
             <input type="button" value="Whole Tone" id="whole-tone" class="ui-condition">
             <input type="button" value="Pentatonic" id="pentatonic" class="ui-condition">
             <!--<input type="button" value="Preset 1" id="preset-1" class="ui-condition">-->
+            <br/>
             <input type="button" value="Save Preset" id="save-preset" class="ui-condition">
-            <input type="button" value="Record Preset" id="record-preset" class="ui-condition">
-            <span id="record-time" class="ui-condition"></span>
+
+
+
+            <input type="button" value="Record Preset" id="record-preset" class="ui-condition not-recording">
+            <div id="record-time" class="ui-condition"></div>
+            <span id="record-events"></span>
+
             <div id="presets">
 
 

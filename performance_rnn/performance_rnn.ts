@@ -186,6 +186,7 @@ function resetRnn() {
   pianoStartTimestampMs = performance.now() - currentPianoTimeSec * 1000;
   currentLoopId++;
 
+  updateConditioningParams();
   if (playing) {
     generateStep(currentLoopId);
   }
@@ -219,7 +220,8 @@ const gainDisplayElement =
   document.getElementById('gain-display') as HTMLSpanElement;
 let globalGain = +gainSliderElement.value;
 gainSliderElement.addEventListener('input', () => {
-  updateGain(+gainSliderElement.value);
+  updateConditioningParams()
+  // updateGain(+gainSliderElement.value);
 });
 
 const notes = ['c', 'cs', 'd', 'ds', 'e', 'f', 'fs', 'g', 'gs', 'a', 'as', 'b'];
@@ -307,15 +309,18 @@ function updateNoteDensity(noteDensityIdx: number) {
       DENSITY_BIN_RANGES.length + 1).as1D();
 }
 
-function updateConditioningParams() {
+function updateConditioningParams(eventName?: string) {
+  let evtName = eventName;
   pitchHistogram = pitchHistogramElements.map(e => {
     return parseInt(e.value, 10) || 0;
   });
   updateDisplayHistogram(pitchHistogram);
 
+  if (+gainSliderElement.value - globalGain != 0) { evtName = "volume " + ((+gainSliderElement.value - globalGain > 0) ? "increased" : "decreased") }
   globalGain = +gainSliderElement.value;
   updateGain(+gainSliderElement.value);
 
+  if (+densityControl.value - noteDensityIdx != 0) { evtName = "density " + ((+densityControl.value - noteDensityIdx > 0) ? "increased" : "decreased") }
   noteDensityIdx = parseInt(densityControl.value, 10) || 0;
   updateNoteDensity(noteDensityIdx);
 
@@ -339,17 +344,17 @@ function updateConditioningParams() {
   pitchHistogramEncoding = buffer.toTensor();
 
   if (recordingPreset) {
-    updatePresetRecording();
+    updatePresetRecording(evtName);
   }
 }
 
-document.getElementById('note-density').oninput = updateConditioningParams;
+document.getElementById('note-density').oninput = () => { updateConditioningParams() };
 pitchHistogramElements.forEach(e => {
-  e.oninput = updateConditioningParams;
+  e.oninput = () => { updateConditioningParams(e.value) };
 });
 updateConditioningParams();
 
-function updatePitchHistogram(newHist: number[]) {
+function updatePitchHistogram(newHist: number[], eventName?: string) {
   let allZero = true;
   for (let i = 0; i < newHist.length; i++) {
     allZero = allZero && newHist[i] === 0;
@@ -361,7 +366,7 @@ function updatePitchHistogram(newHist: number[]) {
     pitchHistogramElements[i].value = newHist[i].toString();
   }
 
-  updateConditioningParams();
+  updateConditioningParams(eventName);
 }
 function updateDisplayHistogram(hist: number[]) {
   let sum = 0;
@@ -381,7 +386,7 @@ document.getElementById("key").onchange = () => {
   const offset = keyOffset[key];
   let histogram = (key.indexOf("Major") > -1) ? majorHistogram : minorHistogram;
   let shiftedHistogram = histogram.slice(histogram.length - offset, histogram.length).concat(histogram.slice(0, histogram.length - offset));
-  updatePitchHistogram(shiftedHistogram);
+  updatePitchHistogram(shiftedHistogram, key);
 }
 
 document.getElementById("chord").onchange = () => {
@@ -404,10 +409,9 @@ document.getElementById("chord").onchange = () => {
       }
     }
   }
-  console.log("CHORD HISTOGRAM", chordHistogram);
   let shiftedHistogram = chordHistogram.slice(chordHistogram.length - offset, chordHistogram.length).concat(chordHistogram.slice(0, chordHistogram.length - offset));
 
-  updatePitchHistogram(shiftedHistogram);
+  updatePitchHistogram(shiftedHistogram, chord + " chord");
 }
 
 const majorHistogram = [2, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
@@ -454,11 +458,11 @@ document.getElementById('d-minor').onclick = () => {
 };*/
 
 document.getElementById('whole-tone').onclick = () => {
-  updatePitchHistogram([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]);
+  updatePitchHistogram([1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0], "whole-tone");
 };
 
 document.getElementById('pentatonic').onclick = () => {
-  updatePitchHistogram([0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]);
+  updatePitchHistogram([0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0], "pentatonic");
 };
 
 document.getElementById('reset-rnn').onclick = () => {
@@ -505,38 +509,61 @@ function savePreset(preset: any) {
 }
 
 document.getElementById('record-preset').onclick = () => {
+  clearEvents();
   const recordElem = document.getElementById('record-preset');
 
   let recordTimeElem = document.getElementById('record-time');
   if (recordElem.getAttribute("value") == "Record Preset") {
     recordElem.setAttribute("value", "Stop Recording");
+    recordElem.classList.add("recording");
+    recordElem.classList.remove("not-recording");
     updateConditioningParams();
     recordingPreset = true;
     currPresetRecording = [];
-    recordTimeElem.innerHTML = '0';
+    recordTimeElem.innerHTML = 'recording changes: Time 0';
     recordTimeTimeout = setInterval(() => {
-      recordTimeElem.innerHTML = (parseInt(recordTimeElem.innerHTML) + 1).toString();
+      recordTimeElem.innerHTML = 'recording changes: Time ' + (parseInt(recordTimeElem.innerHTML.split("Time ")[1]) + 1).toString();
     }, 1000);
-    console.log("started", recordTimeTimeout);
   } else {
     recordElem.setAttribute("value", "Record Preset");
+    recordElem.classList.remove("recording");
+    recordElem.classList.add("not-recording");
     recordTimeElem.innerHTML = '';
     recordingPreset = false;
-    savePreset(currPresetRecording);
-    console.log("cleared", recordTimeTimeout);
+    if (currPresetRecording.length > 0) { // blank recording
+      savePreset(currPresetRecording);
+    }
     clearInterval(recordTimeTimeout);
-    console.log("cleared", recordTimeTimeout);
-    // recordTimeElem.innerHTML = "";
   }
 };
 
-function updatePresetRecording() {
-  currPresetRecording.push({ 'pitchHistogram': pitchHistogram, 'noteDensityIdx': noteDensityIdx, 'gain': globalGain });
+function updatePresetRecording(eventName?: string) {
+  if (eventName == undefined) {
+    return;
+  }
+  let lastEvent = currPresetRecording.length == 0 ? "" : currPresetRecording[currPresetRecording.length - 1]['eventName'];
+  let time = document.getElementById('record-time').innerHTML;
+  time = time.split("Time ")[1];
+  let newEvent = { 'time': time, 'eventName': eventName, 'pitchHistogram': pitchHistogram, 'noteDensityIdx': noteDensityIdx, 'gain': globalGain };
+  currPresetRecording.push(newEvent);
+  if (eventName != lastEvent) {
+    showEvent(newEvent);
+  }
+}
+
+function showEvent(event: any) {
+  let eventsElem = document.getElementById('record-events');
+  let evtElem = document.createElement("span");
+  evtElem.setAttribute("class", "record-event");
+  evtElem.innerHTML = 'Time ' + event['time'] + ": " + event['eventName'];
+  eventsElem.appendChild(evtElem);
+}
+
+function clearEvents() {
+  document.getElementById('record-events').innerHTML = '';
 }
 
 function addPresetButton(name: string) {
-  //  <input type="button" value="Preset 1" id="preset-1" class="ui-condition">
-
   let presetContainer: HTMLElement = document.createElement("div");
   presetContainer.setAttribute("class", "presetcontainer");
   let preset: HTMLElement = document.createElement("input");
@@ -557,26 +584,42 @@ function addPresetButton(name: string) {
 
   let presetTimeout: ReturnType<typeof setTimeout> = null;
   let ticks = 0;
-  function update() {
-    let presetProperties = Array.isArray(thisPreset) ? thisPreset[ticks] : thisPreset;
-    updatePitchHistogram(presetProperties['pitchHistogram']);
-    updateNoteDensity(presetProperties['noteDensityIdx']);
-    updateGain(presetProperties['gain']);
-    console.log("TICK", ticks, pitchHistogram, noteDensityIdx, globalGain);
 
-    if (!Array.isArray(thisPreset)) {
-      return;
-    }
-    ticks += 1;
-    if (ticks == thisPreset.length) {
-      clearTimeout(presetTimeout);
-      return;
-    } else {
-      setTimeout(update, 10000);
-    }
-
-
+  for (var i = 0; i < thisPreset.length; i++) {
+    console.log(thisPreset[i]['eventName']);
   }
+  function playRecordedPreset() {
+    if (ticks == 0) {
+      clearEvents();
+    }
+    if (ticks > thisPreset[thisPreset.length - 1]['time']) {
+      ticks = 0;
+      clearTimeout(presetTimeout);
+    } else {
+      for (var i = 0; i < thisPreset.length; i++) {
+        let presetProperties = thisPreset[i];
+        if (ticks == presetProperties['time']) {
+          updatePitchHistogram(presetProperties['pitchHistogram']);
+          updateNoteDensity(presetProperties['noteDensityIdx']);
+          updateGain(presetProperties['gain']);
+          showEvent(presetProperties);
+        } else if (parseInt(presetProperties['time']) > ticks) {
+          break;
+        }
+      }
+
+      ticks += 1;
+      setTimeout(playRecordedPreset, 1000);
+    }
+  }
+
+  function playPreset() {
+    clearEvents();
+    updatePitchHistogram(thisPreset['pitchHistogram']);
+    updateNoteDensity(thisPreset['noteDensityIdx']);
+    updateGain(thisPreset['gain']);
+  }
+
   preset.onclick = () => {
     const presetElems = document.getElementsByClassName("preset");
     for (let i = 0; i < presetElems.length; i++) {
@@ -584,7 +627,7 @@ function addPresetButton(name: string) {
     }
 
     preset.classList.add("presetSelected");
-    update();
+    Array.isArray(thisPreset) ? playRecordedPreset() : playPreset();
   };
 
   presetTextfield.addEventListener("keyup", (e) => {
