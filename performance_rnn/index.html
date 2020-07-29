@@ -76,8 +76,25 @@ limitations under the License.
       border: 3px solid black;
     }
 
-    #record-preset {
+    .not-recording {
       background-color: #ADD8E6;
+    }
+
+    .recording {
+      background-color: red;
+    }
+
+    #record-events {
+      flex-direction: column;
+    }
+
+    .record-event {
+      display: flex;
+    }
+
+    #record-time {
+      display: flex;
+      color: red;
     }
 
     #save-preset {
@@ -277,7 +294,7 @@ limitations under the License.
   </header>
 
   <div id="container">
-    <div class="header">Performance RNN TESTING</div>
+    <div class="header">Performance RNN</div>
     <div id="status">Loading...</div>
     <div id="controls" class="hidden">
       <div class="control" style="margin-right: 20px;">
@@ -316,7 +333,7 @@ limitations under the License.
                 <div id="hist-cs" class="histogram-value"></div>
               </div>
               <input class="pitch ui-condition" id="pitch-cs" type="number" min="0" value="0">
-              <br/> C#
+              <br/> Db
             </div>
             <div class="control">
               <div class="histogram-bucket">
@@ -330,7 +347,7 @@ limitations under the License.
                 <div id="hist-ds" class="histogram-value"></div>
               </div>
               <input class="pitch ui-condition" id="pitch-ds" type="number" min="0" value="0">
-              <br/> D#
+              <br/> Eb
             </div>
             <div class="control">
               <div class="histogram-bucket">
@@ -351,7 +368,7 @@ limitations under the License.
                 <div id="hist-fs" class="histogram-value"></div>
               </div>
               <input class="pitch ui-condition" id="pitch-fs" type="number" min="0" value="0">
-              <br/> F#
+              <br/> Gb
             </div>
             <div class="control">
               <div class="histogram-bucket">
@@ -365,7 +382,7 @@ limitations under the License.
                 <div id="hist-gs" class="histogram-value"></div>
               </div>
               <input class="pitch ui-condition" id="pitch-gs" type="number" min="0" value="0">
-              <br/> G#
+              <br/> Ab
             </div>
             <div class="control">
               <div class="histogram-bucket">
@@ -379,7 +396,7 @@ limitations under the License.
                 <div id="hist-as" class="histogram-value"></div>
               </div>
               <input class="pitch ui-condition" id="pitch-as" type="number" min="0" value="0">
-              <br/> A#
+              <br/> Bb
             </div>
             <div class="control">
               <div class="histogram-bucket">
@@ -397,6 +414,13 @@ limitations under the License.
               <option value="G Major">G Major</option>
               <option value="A Major">A Major</option>
               <option value="B Major">B Major</option>
+              <option value="c minor">c minor</option>
+              <option value="d minor">d minor</option>
+              <option value="e minor">e minor</option>
+              <option value="f minor">f minor</option>
+              <option value="g minor">g minor</option>
+              <option value="a minor">a minor</option>
+              <option value="b minor">b minor</option>
             </select>
             <select name="chord" id="chord">
               <option value="1">1 (chord)</option>
@@ -413,9 +437,15 @@ limitations under the License.
             <input type="button" value="Whole Tone" id="whole-tone" class="ui-condition">
             <input type="button" value="Pentatonic" id="pentatonic" class="ui-condition">
             <!--<input type="button" value="Preset 1" id="preset-1" class="ui-condition">-->
+            <br/>
             <input type="button" value="Save Preset" id="save-preset" class="ui-condition">
-            <input type="button" value="Record Preset" id="record-preset" class="ui-condition">
-            <span id="record-time" class="ui-condition"></span>
+
+
+
+            <input type="button" value="Record Preset" id="record-preset" class="ui-condition not-recording">
+            <div id="record-time" class="ui-condition"></div>
+            <span id="record-events"></span>
+
             <div id="presets">
 
 
